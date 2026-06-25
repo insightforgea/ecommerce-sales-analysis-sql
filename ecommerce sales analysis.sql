@@ -531,4 +531,73 @@ JOIN
 ON p.product_id = od.product_id
 GROUP BY c.customer_id ,c.customer_name,o.order_id;
 
+--q19)Find the customer who contributed the highest percentage of total company revenue.
+WITH customer_revenue AS(
+SELECT 
+	c.customer_name,
+	SUM(od.quantity * p.price)AS customer_revenue
+FROM 
+	customers c
+JOIN 
+	orders o
+ON o.customer_id = c.customer_id 
+JOIN
+	order_details od
+ON od.order_id = o.order_id 
+JOIN 
+	products p
+ON p.product_id = od.product_id
+GROUP BY c.customer_id,c.customer_name
+),
+total_customer_revenue AS (
+SELECT
+	SUM(customer_revenue) AS total_revenue
+FROM
+	customer_revenue cr
+)
+SELECT
+	cr.customer_name ,
+	cr.customer_revenue,
+	ROUND((cr.customer_revenue/tcr.total_revenue)*100,2) AS percentage_revenue
+FROM
+ 	customer_revenue cr
+CROSS JOIN
+	total_customer_revenue tcr  
+ORDER BY percentage_revenue DESC
+LIMIT 1;
+
+
+--q20)For each customer, show the difference between their current order value and previous order value.
+WITH current_value AS(
+SELECT
+ 	c.customer_name ,
+	o.order_id ,
+	o.order_date,
+	SUM(od.quantity*p.price) AS current_order_value,
+	LAG(SUM(od.quantity*p.price))OVER(PARTITION BY c.customer_id,c.customer_name ORDER BY o.order_date ASC) AS previous_order_value 
+FROM 
+	customers c
+JOIN 
+	orders o
+ON o.customer_id = c.customer_id 
+JOIN
+	order_details od
+ON od.order_id = o.order_id 
+JOIN 
+	products p
+ON p.product_id = od.product_id
+GROUP BY c.customer_id,c.customer_name,o.order_id ,o.order_date
+)  
+SELECT
+	cv.customer_name,
+	cv.order_id ,
+	cv.current_order_value,
+	cv.previous_order_value,
+	ROUND((cv.current_order_value - cv.previous_order_value),2) AS difference 
+FROM 
+	current_value cv
+WHERE cv.previous_order_value IS NOT NULL;
+
+
+
 
